@@ -1,4 +1,4 @@
-
+// salidas del encoder
 #define PIN_1_ENCODER         2
 #define PIN_2_ENCODER         3
 
@@ -22,6 +22,9 @@
 #define PIN_MOTOR_SUBIDA      25   // Salida rele subida motor
 #define PIN_MOTOR_PARO_LENTO  27   // Salida rele paro lento
 
+// otros valores 
+#define TIEMPO_PARPADEO_LED   500  // Duración del parpadeo de los leds en milisegundos
+
 // variables de estado del encoder
 int valor_encoder = 0;
 int estado_encoder_ultimo = 0b00;
@@ -30,11 +33,14 @@ int estado_encoder_ultimo = 0b00;
 int piso_actual = -1;
 int piso_destino = -1;
 
-// boleanos para la asignacion de un numero a cada llamada o final de carrera
-// para poder operar
+// estados de los pulsadores
 bool estado_anterior_pulsador_1 = false;
 bool estado_anterior_pulsador_2 = false;
 bool estado_anterior_pulsador_3 = false;
+
+// estado de los leds
+int tiempo_led_ultimo = 0;
+bool estado_led_ultimo = false;
 
 void setup() {
   Serial.begin (9600);
@@ -80,28 +86,7 @@ void setup() {
   piso_actual = detectar_piso_actual();
   
   // Estado inicial pines de entrada y salida
-  switch(piso_actual) {
-    case 1:
-      digitalWrite(PIN_LED_PLANTA_1, HIGH);
-      digitalWrite(PIN_LED_PLANTA_2, LOW);
-      digitalWrite(PIN_LED_PLANTA_3, LOW);
-      break;
-    case 2:
-      digitalWrite(PIN_LED_PLANTA_1, LOW);
-      digitalWrite(PIN_LED_PLANTA_2, HIGH);
-      digitalWrite(PIN_LED_PLANTA_3, LOW);
-      break;
-    case 3:
-      digitalWrite(PIN_LED_PLANTA_1, LOW);
-      digitalWrite(PIN_LED_PLANTA_2, LOW);
-      digitalWrite(PIN_LED_PLANTA_3, HIGH);
-      break;
-    case -1:
-      digitalWrite(PIN_LED_PLANTA_1, HIGH);
-      digitalWrite(PIN_LED_PLANTA_2, HIGH);
-      digitalWrite(PIN_LED_PLANTA_3, HIGH);
-      break;
-  }
+  encender_leds(piso_actual, piso_destino);
 }
 
 void loop() {
@@ -124,22 +109,14 @@ void loop() {
     estado_anterior_pulsador_3 = estado_actual_pulsador_3;
   }
 
-  // Si hay un piso de destino, activar el ascensor hasta que llegue
+  // Si hay un piso de destino, activar el motor hasta que llegue
   switch (piso_destino) {
       case 1:                                   //caso para la llamada desde el sotano
           if (piso_actual > 1)                   //si el piso en el que esta el montacargas es mayor a 1
             digitalWrite (PIN_MOTOR_BAJADA, LOW);         // esto hara bajar al motor
-            digitalWrite (PIN_LED_PLANTA_1, HIGH);          //al pulsar el pulsador del sotano el led 1 del sotano se pone intermitente
-            //delay(500);                         
-            digitalWrite (PIN_LED_PLANTA_1, LOW);
-            //delay(500);
-            Serial.println(valor_encoder);
           if (digitalRead(PIN_FINAL_CARRERA_1)) {          //cuando el final de carrera de la planta sotano se active significa que ya esta el montacargas en la planta sotano y detendra el motor
             digitalWrite (PIN_MOTOR_SUBIDA, HIGH);
             digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            digitalWrite (PIN_LED_PLANTA_1, HIGH);        //el led 1 se pone fijo cuando se activa el final de carrera del sotano 
-            digitalWrite (PIN_LED_PLANTA_2, LOW);         // y se apaga el led de la planta que estaba
-            digitalWrite (PIN_LED_PLANTA_3, LOW);
             piso_actual = 1;
             piso_destino = -1;
             Serial.println(valor_encoder);
@@ -151,17 +128,10 @@ void loop() {
             digitalWrite(PIN_MOTOR_BAJADA, LOW);          //esto hara bajar al motor
           else if (piso_actual < 2)              //si el piso en el que esta el montagargas es menor a 2
             digitalWrite(PIN_MOTOR_SUBIDA, LOW);          //esto hara subir al motor
-            digitalWrite (PIN_LED_PLANTA_2, HIGH);          //al pulsar el pulsador del baja el led 2 de la planta baja se pone intermitente
-            //delay(500);
-            digitalWrite (PIN_LED_PLANTA_2, LOW);
-            //delay(500);
             Serial.println(valor_encoder);
           if (digitalRead(PIN_FINAL_CARRERA_2)) {          //cuando el final de carrera de la planta baja se active significa que ya esta el montacargas en la planta baja y detendra motor
             digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
             digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            digitalWrite (PIN_LED_PLANTA_2, HIGH);        //el led 2 se pone fijo cuando se activa el final de carrera de la planta baja 
-            digitalWrite (PIN_LED_PLANTA_1, LOW);         // y se apaga el led de la planta que estaba
-            digitalWrite (PIN_LED_PLANTA_3, LOW);
             piso_actual = 2;
             piso_destino = -1;
             Serial.println(valor_encoder);
@@ -171,17 +141,10 @@ void loop() {
     case 3:                                //caso para la llamada desde la planta primera
           if (piso_actual < 3)              //si el piso en el que esta el montacargas es menor a 3
             digitalWrite(PIN_MOTOR_SUBIDA, LOW);     //esto hara subir al motor
-            digitalWrite (PIN_LED_PLANTA_3, HIGH);     //al pulsar el pulsador de la plata primera el led 3 de la planta primera se pone intermitente
-            //delay(500);
-            digitalWrite (PIN_LED_PLANTA_3, LOW);
-            //delay(500);
             Serial.println(valor_encoder);
           if (digitalRead(PIN_FINAL_CARRERA_3)) {      //cuando el final de carrera de la planta primera se active significa que ya esta el montacargas en la planta primera y detendra el motor
             digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
             digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            digitalWrite (PIN_LED_PLANTA_3, HIGH);    //el led 3 se pone fijo cuando se activa el final de carrera de la planta primera 
-            digitalWrite (PIN_LED_PLANTA_1, LOW);     // y se apaga el led de la planta que estaba
-            digitalWrite (PIN_LED_PLANTA_2, LOW);    
             piso_actual = 3;
             piso_destino = -1;
             Serial.println(valor_encoder);
@@ -189,6 +152,9 @@ void loop() {
           break;
       
     }
+
+    // Encender los leds en función de donde se encuentre el montacargas
+    encender_leds(piso_actual, piso_destino);
 }
 
 int detectar_piso_actual() {
@@ -221,3 +187,60 @@ void actualizar_encoder() {
   estado_encoder_ultimo = estado_encoder_actual; // Guardamos el ultimo estado del encoder
 }
  
+void encender_leds(int piso_actual, int piso_destino) {
+
+  // Encender el led de la planta actual
+  switch (piso_actual) {
+    case 1:
+      digitalWrite(PIN_LED_PLANTA_1, HIGH);
+      digitalWrite(PIN_LED_PLANTA_2, LOW);
+      digitalWrite(PIN_LED_PLANTA_3, LOW);
+      break;
+    case 2:
+      digitalWrite(PIN_LED_PLANTA_1, LOW);
+      digitalWrite(PIN_LED_PLANTA_2, HIGH);
+      digitalWrite(PIN_LED_PLANTA_3, LOW);
+      break;
+    case 3:
+      digitalWrite(PIN_LED_PLANTA_1, LOW);
+      digitalWrite(PIN_LED_PLANTA_2, LOW);
+      digitalWrite(PIN_LED_PLANTA_3, HIGH);
+      break;
+    case -1:
+      digitalWrite(PIN_LED_PLANTA_1, HIGH);
+      digitalWrite(PIN_LED_PLANTA_2, HIGH);
+      digitalWrite(PIN_LED_PLANTA_3, HIGH);
+      break;
+  }
+
+  // Si el ascensor se está moviendo, el led de la planta destino debe parpadear
+  if(piso_destino != -1) {
+    // Comprobar si ha pasado el tiempo suficiente para cambiar el estado del led
+    int tiempo_led_actual = millis();
+    if (tiempo_led_actual - tiempo_led_ultimo > TIEMPO_PARPADEO_LED) {
+      // Seleccionar el pin del led que tiene que parpadear
+      int pin_led = -1;
+      switch (piso_destino) {
+        case 1:
+          pin_led = PIN_LED_PLANTA_1;
+          break;
+        case 2:
+          pin_led = PIN_LED_PLANTA_2;
+          break;
+        case 3:
+          pin_led = PIN_LED_PLANTA_3;
+          break;
+      }
+
+      // Si el led estaba encendido hay que apagarlo y viceversa
+      if (estado_led_ultimo) {
+        digitalWrite(pin_led, LOW);
+      } else {
+        digitalWrite(pin_led, HIGH);
+      }
+
+      estado_led_ultimo = !estado_led_ultimo;
+      tiempo_led_ultimo = tiempo_led_actual;
+    }
+  }
+}
