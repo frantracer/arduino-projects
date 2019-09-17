@@ -32,12 +32,9 @@ int piso_destino = -1;
 
 // boleanos para la asignacion de un numero a cada llamada o final de carrera
 // para poder operar
-bool vfinal1, vfinal1Ant;
-bool vfinal2, vfinal2Ant;
-bool vfinal3, vfinal3Ant;
-bool vllamada1, vllamada1Ant;
-bool vllamada2, vllamada2Ant;
-bool vllamada3, vllamada3Ant;
+bool estado_anterior_pulsador_1 = false;
+bool estado_anterior_pulsador_2 = false;
+bool estado_anterior_pulsador_3 = false;
 
 void setup() {
   Serial.begin (9600);
@@ -109,23 +106,25 @@ void setup() {
 
 void loop() {
 
+  // Leer pulsadores si no hay un piso de destino
   if(piso_destino == -1) {
-    vllamada1 = digitalRead(PIN_PULSADOR_1);
-    if (vllamada1 && vllamada1Ant)                     // asigadores de valor numerico para cada final de llamada
-        piso_destino = 1;                               // cambio el nombre a pisodestino
-    vllamada1Ant = vllamada1;   
+    int estado_actual_pulsador_1 = digitalRead(PIN_PULSADOR_1);
+    if (!estado_actual_pulsador_1 && estado_anterior_pulsador_1)  // activar botón al levantar el dedo
+        piso_destino = 1;                                         // seleccionar el piso de destino al sótano
+    estado_anterior_pulsador_1 = estado_actual_pulsador_1;   
                                    
-    vllamada2 = digitalRead(PIN_PULSADOR_2);
-    if (vllamada2 && vllamada2Ant)
-        piso_destino = 2;
-    vllamada2Ant = vllamada2;
+    int estado_actual_pulsador_2 = digitalRead(PIN_PULSADOR_2);
+    if (!estado_actual_pulsador_2 && estado_anterior_pulsador_2)  // activar botón al levantar el dedo
+        piso_destino = 2;                                         // seleccionar el piso de destino a la planta baja
+    estado_anterior_pulsador_2 = estado_actual_pulsador_2;
   
-    vllamada3 = digitalRead(PIN_PULSADOR_3);
-    if (vllamada3 && vllamada3Ant)
-        piso_destino = 3;
-    vllamada3Ant = vllamada3;
+    int estado_actual_pulsador_3 = digitalRead(PIN_PULSADOR_3);  
+    if (!estado_actual_pulsador_3 && estado_anterior_pulsador_3)  // activar botón al levantar el dedo
+        piso_destino = 3;                                         // seleccionar el piso de destino a la primera planta
+    estado_anterior_pulsador_3 = estado_actual_pulsador_3;
   }
 
+  // Si hay un piso de destino, activar el ascensor hasta que llegue
   switch (piso_destino) {
       case 1:                                   //caso para la llamada desde el sotano
           if (piso_actual > 1)                   //si el piso en el que esta el montacargas es mayor a 1
