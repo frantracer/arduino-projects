@@ -12,6 +12,9 @@
 #define PIN_FINAL_CARRERA_2   8    // Final carrera planta baja
 #define PIN_FINAL_CARRERA_3   9    // Final carrera planta primera
 
+// sensor de estado de las puertas
+#define PIN_ESTADO_PUERTAS    10
+
 // led indicadores de plantas
 #define PIN_LED_PLANTA_1      39   // Led indicador de planta sotano
 #define PIN_LED_PLANTA_2      41   // Led indicador de planta baja
@@ -21,6 +24,16 @@
 #define PIN_MOTOR_BAJADA      23   // Salida rele bajada motor
 #define PIN_MOTOR_SUBIDA      25   // Salida rele subida motor
 #define PIN_MOTOR_PARO_LENTO  27   // Salida rele paro lento
+
+// motores cierre y apertura de puertas
+#define PIN_CIERRE_PUERTAS    29
+#define PIN_APERTURA_PUERTAS  31
+
+// rele encedido de luz
+#define PIN_LUZ_ASCENSOR      33
+
+// rele alarma
+#define PIN_ALARMA            35
 
 // otros valores 
 #define TIEMPO_PARPADEO_LED   500  // Duración del parpadeo de los leds en milisegundos
@@ -65,6 +78,19 @@ void setup() {
   pinMode(PIN_MOTOR_SUBIDA, OUTPUT);
   pinMode(PIN_MOTOR_PARO_LENTO, OUTPUT);
 
+  // PIN DE ESTADO DE LAS PUERTAS
+  pinMode(PIN_ESTADO_PUERTAS, INPUT);
+
+  // PINES MOTORES CIERRE Y APERTURA PUERTAS
+  pinMode(PIN_CIERRE_PUERTAS, OUTPUT);
+  pinMode(PIN_APERTURA_PUERTAS, OUTPUT);
+
+  // RELE ENCENDIDO DE LUZ
+  pinMode(PIN_LUZ_ASCENSOR, OUTPUT);
+
+  // RELE ALARMA
+  pinMode(PIN_ALARMA, OUTPUT);
+  
   // INICIALIZAR TODOS LOS COMPONENTES DEL SISTEMA
 
   // Para motor al iniciar
@@ -91,8 +117,8 @@ void setup() {
 
 void loop() {
 
-  // Leer pulsadores si no hay un piso de destino
-  if(piso_destino == -1) {
+  // Leer pulsadores si no hay un piso de destino y las puertas están cerradas
+  if(piso_destino == -1 && digitalRead(PIN_ESTADO_PUERTAS) == 1) {
     int estado_actual_pulsador_1 = digitalRead(PIN_PULSADOR_1);
     if (!estado_actual_pulsador_1 && estado_anterior_pulsador_1)  // activar botón al levantar el dedo
         piso_destino = 1;                                         // seleccionar el piso de destino al sótano
@@ -193,23 +219,23 @@ void encender_leds(int piso_actual, int piso_destino) {
     // Encender el led de la planta actual
     switch (piso_actual) {
       case 1:
-      digitalWrite(PIN_LED_PLANTA_1, HIGH);
-      digitalWrite(PIN_LED_PLANTA_2, LOW);
-      digitalWrite(PIN_LED_PLANTA_3, LOW);
-      break;
-    case 2:
-      digitalWrite(PIN_LED_PLANTA_1, LOW);
-      digitalWrite(PIN_LED_PLANTA_2, HIGH);
-      digitalWrite(PIN_LED_PLANTA_3, LOW);
-      break;
-    case 3:
-      digitalWrite(PIN_LED_PLANTA_1, LOW);
-      digitalWrite(PIN_LED_PLANTA_2, LOW);
-      digitalWrite(PIN_LED_PLANTA_3, HIGH);
-      break;
-    case -1:
-      digitalWrite(PIN_LED_PLANTA_1, HIGH);
-      digitalWrite(PIN_LED_PLANTA_2, HIGH);
+        digitalWrite(PIN_LED_PLANTA_1, HIGH);
+        digitalWrite(PIN_LED_PLANTA_2, LOW);
+        digitalWrite(PIN_LED_PLANTA_3, LOW);
+        break;
+      case 2:
+        digitalWrite(PIN_LED_PLANTA_1, LOW);
+        digitalWrite(PIN_LED_PLANTA_2, HIGH);
+        digitalWrite(PIN_LED_PLANTA_3, LOW);
+        break;
+      case 3:
+        digitalWrite(PIN_LED_PLANTA_1, LOW);
+        digitalWrite(PIN_LED_PLANTA_2, LOW);
+        digitalWrite(PIN_LED_PLANTA_3, HIGH);
+        break;
+      case -1:
+        digitalWrite(PIN_LED_PLANTA_1, HIGH);
+        digitalWrite(PIN_LED_PLANTA_2, HIGH);
         digitalWrite(PIN_LED_PLANTA_3, HIGH);
         break;
     }
