@@ -189,9 +189,10 @@ void actualizar_encoder() {
  
 void encender_leds(int piso_actual, int piso_destino) {
 
-  // Encender el led de la planta actual
-  switch (piso_actual) {
-    case 1:
+  if(piso_destino == -1) {
+    // Encender el led de la planta actual
+    switch (piso_actual) {
+      case 1:
       digitalWrite(PIN_LED_PLANTA_1, HIGH);
       digitalWrite(PIN_LED_PLANTA_2, LOW);
       digitalWrite(PIN_LED_PLANTA_3, LOW);
@@ -209,12 +210,11 @@ void encender_leds(int piso_actual, int piso_destino) {
     case -1:
       digitalWrite(PIN_LED_PLANTA_1, HIGH);
       digitalWrite(PIN_LED_PLANTA_2, HIGH);
-      digitalWrite(PIN_LED_PLANTA_3, HIGH);
-      break;
-  }
-
+        digitalWrite(PIN_LED_PLANTA_3, HIGH);
+        break;
+    }
   // Si el ascensor se está moviendo, el led de la planta destino debe parpadear
-  if(piso_destino != -1) {
+  } else {
     // Comprobar si ha pasado el tiempo suficiente para cambiar el estado del led
     int tiempo_led_actual = millis();
     if (tiempo_led_actual - tiempo_led_ultimo > TIEMPO_PARPADEO_LED) {
