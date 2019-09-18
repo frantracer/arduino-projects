@@ -135,52 +135,63 @@ void loop() {
     estado_anterior_pulsador_3 = estado_actual_pulsador_3;
   }
 
-  // Si hay un piso de destino, activar el motor hasta que llegue
-  switch (piso_destino) {
-      case 1:                                   //caso para la llamada desde el sotano
-          if (piso_actual > 1)                   //si el piso en el que esta el montacargas es mayor a 1
-            digitalWrite (PIN_MOTOR_BAJADA, LOW);         // esto hara bajar al motor
-          if (digitalRead(PIN_FINAL_CARRERA_1)) {          //cuando el final de carrera de la planta sotano se active significa que ya esta el montacargas en la planta sotano y detendra el motor
-            digitalWrite (PIN_MOTOR_SUBIDA, HIGH);
-            digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            piso_actual = 1;
-            piso_destino = -1;
-            Serial.println(valor_encoder);
-          }         
-          break;
-
-    case 2:                                     //caso para la llamada desde la planta baja
-          if (piso_actual > 2)                   //si el piso en el que esta el montacargas es mayor a 2
-            digitalWrite(PIN_MOTOR_BAJADA, LOW);          //esto hara bajar al motor
-          else if (piso_actual < 2)              //si el piso en el que esta el montagargas es menor a 2
-            digitalWrite(PIN_MOTOR_SUBIDA, LOW);          //esto hara subir al motor
-            Serial.println(valor_encoder);
-          if (digitalRead(PIN_FINAL_CARRERA_2)) {          //cuando el final de carrera de la planta baja se active significa que ya esta el montacargas en la planta baja y detendra motor
-            digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
-            digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            piso_actual = 2;
-            piso_destino = -1;
-            Serial.println(valor_encoder);
-          }
-          break;
-       
-    case 3:                                //caso para la llamada desde la planta primera
-          if (piso_actual < 3)              //si el piso en el que esta el montacargas es menor a 3
-            digitalWrite(PIN_MOTOR_SUBIDA, LOW);     //esto hara subir al motor
-            Serial.println(valor_encoder);
-          if (digitalRead(PIN_FINAL_CARRERA_3)) {      //cuando el final de carrera de la planta primera se active significa que ya esta el montacargas en la planta primera y detendra el motor
-            digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
-            digitalWrite (PIN_MOTOR_BAJADA, HIGH);
-            piso_actual = 3;
-            piso_destino = -1;
-            Serial.println(valor_encoder);
-          }
-          break;
+  if(piso_destino != -1) {
+    Serial.println(valor_encoder);
       
+    // Si hay un piso de destino, activar el motor hasta que llegue
+    switch (piso_destino) {
+      case 1:                                   //caso para la llamada desde el sotano
+        if (piso_actual > 1) {                 //si el piso en el que esta el montacargas es mayor a 1
+          bajar_plataforma();
+        }
+        if (digitalRead(PIN_FINAL_CARRERA_1)) {  //cuando el final de carrera de la planta sotano se active significa que ya esta el montacargas en la planta sotano y detendra el motor
+          parar_plataforma();
+          piso_actual = 1;
+          piso_destino = -1;
+        }         
+        break;
+      case 2:                                     //caso para la llamada desde la planta baja
+        if (piso_actual > 2) {                  //si el piso en el que esta el montacargas es mayor a 2
+          bajar_plataforma();
+        } else if (piso_actual < 2) {              //si el piso en el que esta el montagargas es menor a 2
+          subir_plataforma();
+        }
+        if (digitalRead(PIN_FINAL_CARRERA_2)) {          //cuando el final de carrera de la planta baja se active significa que ya esta el montacargas en la planta baja y detendra motor
+          parar_plataforma();
+          piso_actual = 2;
+          piso_destino = -1;
+        }
+        break;
+      case 3:                                //caso para la llamada desde la planta primera
+        if (piso_actual < 3) {              //si el piso en el que esta el montacargas es menor a 3
+          subir_plataforma();
+        }
+        if (digitalRead(PIN_FINAL_CARRERA_3)) {      //cuando el final de carrera de la planta primera se active significa que ya esta el montacargas en la planta primera y detendra el motor
+          parar_plataforma();
+          piso_actual = 3;
+          piso_destino = -1;
+        }
+        break;
     }
+  }
 
-    // Encender los leds en función de donde se encuentre el montacargas
-    encender_leds(piso_actual, piso_destino);
+  // Encender los leds en función de donde se encuentre el montacargas
+  encender_leds(piso_actual, piso_destino);
+}
+
+void parar_plataforma(){
+  digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
+  digitalWrite(PIN_MOTOR_BAJADA, HIGH);
+}
+
+void subir_plataforma(){
+  digitalWrite(PIN_MOTOR_SUBIDA, LOW);
+  digitalWrite(PIN_MOTOR_BAJADA, HIGH);
+}
+
+void bajar_plataforma(){
+  digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
+  digitalWrite(PIN_MOTOR_BAJADA, LOW);
 }
 
 int detectar_piso_actual() {
