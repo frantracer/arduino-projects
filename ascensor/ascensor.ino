@@ -55,6 +55,7 @@ bool estado_anterior_pulsador_3 = false;
 int tiempo_led_ultimo = 0;
 bool estado_led_ultimo = false;
 
+// Instrucciones que se ejecutan al iniciar la placa
 void setup() {
   Serial.begin (9600);
   
@@ -68,7 +69,7 @@ void setup() {
   pinMode(PIN_FINAL_CARRERA_2, INPUT);
   pinMode(PIN_FINAL_CARRERA_3, INPUT);
 
-  // PINES DE LED INDICADORES DE PLANTAS
+  // PINES DE LED INDICADORES DE PLANTAS SALIDAS
   pinMode(PIN_LED_PLANTA_1, OUTPUT);
   pinMode(PIN_LED_PLANTA_2, OUTPUT);
   pinMode(PIN_LED_PLANTA_3, OUTPUT);
@@ -78,36 +79,52 @@ void setup() {
   pinMode(PIN_MOTOR_SUBIDA, OUTPUT);
   pinMode(PIN_MOTOR_PARO_LENTO, OUTPUT);
 
-  // PIN DE ESTADO DE LAS PUERTAS
+  // PIN DE ESTADO DE LAS PUERTAS ENTRADA
   pinMode(PIN_ESTADO_PUERTAS, INPUT);
 
-  // PINES MOTORES CIERRE Y APERTURA PUERTAS
+  // PINES MOTORES CIERRE Y APERTURA PUERTAS SALIDAS
   pinMode(PIN_CIERRE_PUERTAS, OUTPUT);
   pinMode(PIN_APERTURA_PUERTAS, OUTPUT);
 
-  // RELE ENCENDIDO DE LUZ
+  // PIN RELE ENCENDIDO DE LUZ SALIDA
   pinMode(PIN_LUZ_ASCENSOR, OUTPUT);
 
-  // RELE ALARMA
+  // PIN RELE ALARMA SALIDA
   pinMode(PIN_ALARMA, OUTPUT);
   
   // INICIALIZAR TODOS LOS COMPONENTES DEL SISTEMA
 
-  // Para motor al iniciar
-  digitalWrite(PIN_MOTOR_BAJADA, HIGH);
-  digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
-  digitalWrite(PIN_MOTOR_PARO_LENTO, HIGH);
+  // Parar motor al iniciar
+  parar_montacargas();
 
   // Activar pines del encoder
   pinMode(PIN_1_ENCODER, INPUT_PULLUP);
   pinMode(PIN_2_ENCODER, INPUT_PULLUP);
-  
+
+  // Inicializar pines del encoder
   digitalWrite(PIN_1_ENCODER, HIGH);
   digitalWrite(PIN_2_ENCODER, HIGH);
 
+  // Cargar valor encoder
   attachInterrupt(0, actualizar_encoder, CHANGE);
   attachInterrupt(1, actualizar_encoder, CHANGE);
 
+  // LOGICA PARA INICILIZAR EL MONTACARGAS
+
+  // Si el final de carrera del sótano no esté activado
+  if(digitalRead(PIN_FINAL_CARRERA_1) == 0) {
+    int contador_final_carrera = 10;
+    // Mientras no se hayan detectado más de 10 activaciones del final de carrera
+    while(contador_final_carrera > 0) {
+      // Baja el montacargas con parada lenta
+      bajar_montacargas(true);
+      if(digitalRead(PIN_FINAL_CARRERA_1) == 1)
+        contador_final_carrera--;
+    }
+    // Para montacargas cuando haya llegado al sótano
+    parar_montacargas();
+  }
+  
   // Detectar piso actual
   piso_actual = detectar_piso_actual();
   
@@ -140,36 +157,58 @@ void loop() {
       
     // Si hay un piso de destino, activar el motor hasta que llegue
     switch (piso_destino) {
-      case 1:                                   //caso para la llamada desde el sotano
-        if (piso_actual > 1) {                 //si el piso en el que esta el montacargas es mayor a 1
-          bajar_montacargas();
+      case 1:                                   //caso para la llamada desde el sotano y el montacargas esta en la planta  baja
+        if (piso_actual == 2) {                 //si el piso en el que esta el montacargas es mayor a 1
+          bool activar_parada_lenta = valor_encoder < -8000;
+          bajar_montacargas(activar_parada_lenta);
         }
-        if (digitalRead(PIN_FINAL_CARRERA_1)) {  //cuando el final de carrera de la planta sotano se active significa que ya esta el montacargas en la planta sotano y detendra el motor
-          parar_montacargas();
+                                                //caso para la llamada desde el sotano y el montacargas esta en la planta primera  
+        if (piso_actual == 3) {                 //si el piso en el que esta el montacargas es mayor a 1
+          bool activar_parada_lenta = valor_encoder < -15000;
+          bajar_montacargas(activar_parada_lenta);
+        }
+
+        if (digitalRead(PIN_FINAL_CARRERA_1)) {  //cuando el final de carrera de la planta sotano se active
+          parar_montacargas();                   //significa que ya esta el montacargas en la planta sotano y detendra el motor
           piso_actual = 1;
           piso_destino = -1;
+          valor_encoder = 0;
         }         
         break;
       case 2:                                     //caso para la llamada desde la planta baja
-        if (piso_actual > 2) {                  //si el piso en el que esta el montacargas es mayor a 2
-          bajar_montacargas();
-        } else if (piso_actual < 2) {              //si el piso en el que esta el montagargas es menor a 2
-          subir_montacargas();
+        if (piso_actual == 3) {                   //si el piso en el que esta el montacargas es la primera planta
+          bool activar_parada_lenta = valor_encoder < -8000;
+          bajar_montacargas(activar_parada_lenta);
         }
-        if (digitalRead(PIN_FINAL_CARRERA_2)) {          //cuando el final de carrera de la planta baja se active significa que ya esta el montacargas en la planta baja y detendra motor
-          parar_montacargas();
+
+        if (piso_actual == 1) {                   //si el piso en el que esta el montagargas es el sótano
+          bool activar_parada_lenta = valor_encoder > 8000;
+          subir_montacargas(activar_parada_lenta);
+        }
+
+        if (digitalRead(PIN_FINAL_CARRERA_2)) {  //cuando el final de carrera de la planta baja se active 
+          parar_montacargas();                     //significa que ya esta el montacargas en la planta baja y detendra motor
           piso_actual = 2;
           piso_destino = -1;
+          valor_encoder = 0;
         }
         break;
-      case 3:                                //caso para la llamada desde la planta primera
-        if (piso_actual < 3) {              //si el piso en el que esta el montacargas es menor a 3
-          subir_montacargas();
+      case 3:                                       //caso para la llamada desde la planta primera
+        if (piso_actual == 2) {                     //si el piso en el que esta el montacargas es menor a 3
+          bool activar_parada_lenta = valor_encoder > 8000;   
+          subir_montacargas(activar_parada_lenta);
         }
-        if (digitalRead(PIN_FINAL_CARRERA_3)) {      //cuando el final de carrera de la planta primera se active significa que ya esta el montacargas en la planta primera y detendra el motor
-          parar_montacargas();
+
+       if (piso_actual == 1) {                      //si el piso en el que esta el montacargas es menor a 3
+          bool activar_parada_lenta = valor_encoder > 15000;   
+          subir_montacargas(activar_parada_lenta);
+        }
+
+        if (digitalRead(PIN_FINAL_CARRERA_3)) {     //cuando el final de carrera de la planta primera se active 
+          parar_montacargas();                      //significa que ya esta el montacargas en la planta primera y detendra el motor
           piso_actual = 3;
           piso_destino = -1;
+          valor_encoder = 0;
         }
         break;
     }
@@ -182,16 +221,30 @@ void loop() {
 void parar_montacargas(){
   digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
   digitalWrite(PIN_MOTOR_BAJADA, HIGH);
+
+  digitalWrite(PIN_MOTOR_PARO_LENTO, HIGH);
 }
 
-void subir_montacargas(){
+void subir_montacargas(bool lento){
   digitalWrite(PIN_MOTOR_SUBIDA, LOW);
   digitalWrite(PIN_MOTOR_BAJADA, HIGH);
+
+  if(lento) {
+    digitalWrite(PIN_MOTOR_PARO_LENTO, LOW);
+  } else {
+    digitalWrite(PIN_MOTOR_PARO_LENTO, HIGH);
+  }
 }
 
-void bajar_montacargas(){
+void bajar_montacargas(bool lento){
   digitalWrite(PIN_MOTOR_SUBIDA, HIGH);
   digitalWrite(PIN_MOTOR_BAJADA, LOW);
+
+  if(lento) {
+    digitalWrite(PIN_MOTOR_PARO_LENTO, LOW);
+  } else {
+    digitalWrite(PIN_MOTOR_PARO_LENTO, HIGH);
+  }
 }
 
 int detectar_piso_actual() {
